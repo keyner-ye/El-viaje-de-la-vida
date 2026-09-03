@@ -1,1 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Viaje de la Vida - Desarrollo Prenatal Humano 3D</title>
+  <meta name="description" content="Juego interactivo 3D y plataforma educativa sobre el desarrollo prenatal humano: de la concepción al nacimiento.">
+  
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons for UI -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Estilos del Proyecto -->
+  <link rel="stylesheet" href="css/style.css">
 
+  <!-- Import Maps para Three.js y dependencias modernas -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+        "canvas-confetti": "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/+esm"
+      }
+    }
+  </script>
+  <!-- Confetti global script para celebraciones -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <!-- Contenedor Principal del Juego -->
+  <div id="app">
+    
+    <!-- Canvas 3D de Fondo y Simulación -->
+    <div id="canvas-container">
+      <canvas id="webgl-canvas"></canvas>
+      
+      <!-- Efecto de viñeta y líquido amniótico sutil -->
+      <div class="amniotic-vignette"></div>
+      
+      <!-- Partículas de fluido flotante y brillo biológico -->
+      <div id="bio-glow-overlay"></div>
+    </div>
+
+    <!-- Barra de Navegación Superior -->
+    <header class="top-nav">
+      <div class="brand-section">
+        <div class="logo-badge">
+          <i class="fa-solid fa-baby"></i>
+        </div>
+        <div class="brand-text">
+          <h1>DESARROLLO PRENATAL HUMANO</h1>
+          <span class="brand-subtitle">El viaje de la vida: de la concepción al nacimiento</span>
+        </div>
+      </div>
+
+      <!-- Modos Principales -->
+      <nav class="mode-tabs">
+        <button class="nav-tab active" data-mode="story" title="Recorrido guiado de las 7 etapas">
+          <i class="fa-solid fa-route"></i> <span>Aventura 3D</span>
+        </button>
+        <button class="nav-tab" data-mode="lab" title="Explorador 3D con rotación libre y comparación">
+          <i class="fa-solid fa-microscope"></i> <span>Laboratorio 3D</span>
+        </button>
+        <button class="nav-tab" data-mode="minigames" title="7 Minijuegos educativos de destreza">
+          <i class="fa-solid fa-gamepad"></i> <span>Minijuegos</span>
+        </button>
+        <button class="nav-tab" data-mode="care" title="Simulador de cuidados esenciales durante el embarazo">
+          <i class="fa-solid fa-heart-pulse"></i> <span>Cuidados Maternos</span>
+        </button>
+        <button class="nav-tab" data-mode="trivia" title="Ponte a prueba con la trivia médica">
+          <i class="fa-solid fa-award"></i> <span>Trivia & Logros</span>
+        </button>
+        <button class="nav-tab special-birth-tab" id="tab-birth-simulator" data-mode="birth-sim" title="Simulador Clínico Completo de Parto y Corte de Cordón">
+          <i class="fa-solid fa-hands-holding-child"></i> <span>Sala de Parto</span>
+        </button>
+      </nav>
+
+      <!-- Controles de Audio y Menú Rápido -->
+      <div class="header-actions">
+        <!-- Monitor de Latidos (BPM) con Audio -->
+        <div class="heartbeat-hud" id="heartbeat-hud" title="Monitor Cardíaco Fetal en Tiempo Real">
+          <i class="fa-solid fa-heart beat-animation"></i>
+          <span id="bpm-display">-- BPM</span>
+          <canvas id="ecg-canvas" width="60" height="24"></canvas>
+        </div>
+
+        <button class="icon-btn" id="btn-snapshot" title="📸 Tomar Foto Médica / Ecografía">
+          <i class="fa-solid fa-camera"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-gestogram" title="Calculadora Obstétrica y Gestograma">
+          <i class="fa-solid fa-calculator"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-voice-narrator" title="🎙️ Escuchar Narración Médica de la Etapa">
+          <i class="fa-solid fa-microphone-lines"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-birth-simulator" title="👶 Simulador Clínico de Parto Humano">
+          <i class="fa-solid fa-hands-holding-child"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-fullscreen" title="Pantalla Completa">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-audio-toggle" title="Activar/Silenciar Sonido y Latidos">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+        
+        <button class="icon-btn" id="btn-encyclopedia" title="El Gran Libro de la Vida (Enciclopedia)">
+          <i class="fa-solid fa-book-medical"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-help" title="Instrucciones y Controles">
+          <i class="fa-solid fa-circle-question"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Panel Lateral Izquierdo Flotante: Herramientas del Visor 3D -->
+    <aside class="left-controls-hud">
+      <button class="hud-toggle-tab" id="btn-toggle-left-hud" title="Ocultar / Mostrar Herramientas">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <div class="hud-panel glass-panel">
+        <div class="panel-header">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Visor 3D</span>
+        </div>
+        <div class="hud-buttons">
+          <button class="hud-btn active" data-render-mode="bio" title="Vista Biológica Realista">
+            <i class="fa-solid fa-eye"></i> <span>Biológico</span>
+          </button>
+          <button class="hud-btn" data-render-mode="xray" title="Modo Rayos X (Esqueleto y Órganos)">
+            <i class="fa-solid fa-bone"></i> <span>Rayos X</span>
+          </button>
+          <button class="hud-btn" data-render-mode="ultrasound" title="Modo Ecografía 3D Doppler">
+            <i class="fa-solid fa-wave-square"></i> <span>Ecografía</span>
+          </button>
+          <button class="hud-btn" data-render-mode="anatomy" title="Modo Pulmones y Órganos Internos">
+            <i class="fa-solid fa-lungs"></i> <span>Pulmones & Órganos</span>
+          </button>
+        </div>
+
+        <!-- Slider de Capas Anatómicas (Piel ⇄ Órganos ⇄ Esqueleto) -->
+        <div class="scale-toggle-section" style="margin-top: 10px;">
+          <label class="toggle-label" style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span><i class="fa-solid fa-layer-group"></i> Capas del Cuerpo</span>
+            <span id="dissection-val-label" style="color: var(--primary-light); font-weight: 600;">Piel</span>
+          </label>
+          <input type="range" id="slider-dissection" min="0" max="100" value="0" style="width: 100%; margin-top: 4px; accent-color: #6366f1; cursor: pointer;" title="Desliza para transparentar la piel y revelar el esqueleto y órganos">
+        </div>
+
+        <div class="hud-divider"></div>
+
+        <!-- Controles de Zoom -->
+        <div class="scale-toggle-section">
+          <label class="toggle-label">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Zoom de Cámara</span>
+          </label>
+          <div style="display: flex; gap: 6px;">
+            <button class="action-hud-btn" id="btn-zoom-in" title="Acercar"><i class="fa-solid fa-plus"></i> Acercar</button>
+            <button class="action-hud-btn" id="btn-zoom-out" title="Alejar (Ver Todo)"><i class="fa-solid fa-minus"></i> Alejar</button>
+          </div>
+        </div>
+
+        <!-- Comparador de Tamaño en Tiempo Real -->
+        <div class="scale-toggle-section">
+          <label class="toggle-label">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <span>Comparar con Fruta</span>
+          </label>
+          <button class="pill-toggle-btn" id="btn-toggle-scale" title="Mostrar fruta u objeto a escala real">
+            <span class="pill-slider"></span>
+            <span class="pill-text" id="scale-pill-status">Desactivado</span>
+          </button>
+        </div>
+
+        <!-- Silueta Materna y Útero 3D -->
+        <div class="scale-toggle-section">
+          <label class="toggle-label">
+            <i class="fa-solid fa-person-pregnant"></i>
+            <span>Silueta Materna 3D</span>
+          </label>
+          <button class="pill-toggle-btn" id="btn-toggle-maternal" title="Mostrar silueta materna y expansión uterina">
+            <span class="pill-slider"></span>
+            <span class="pill-text" id="maternal-pill-status">Desactivado</span>
+          </button>
+        </div>
+
+        <!-- Marcadores Anatómicos -->
+        <div class="scale-toggle-section">
+          <label class="toggle-label">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Marcadores 3D</span>
+          </label>
+          <button class="pill-toggle-btn active" id="btn-toggle-hotspots" title="Mostrar/ocultar puntos anatómicos">
+            <span class="pill-slider"></span>
+            <span class="pill-text" id="hotspots-pill-status">Visible</span>
+          </button>
+        </div>
+
+        <!-- Rotación Automática -->
+        <div class="scale-toggle-section">
+          <label class="toggle-label">
+            <i class="fa-solid fa-rotate"></i>
+            <span>Giro Automático</span>
+          </label>
+          <button class="pill-toggle-btn active" id="btn-toggle-autorotate">
+            <span class="pill-slider"></span>
+            <span class="pill-text" id="rotate-pill-status">Activo</span>
+          </button>
+        </div>
+
+        <!-- Restablecer Cámara -->
+        <button class="action-hud-btn" id="btn-reset-cam" title="Centrar cámara">
+          <i class="fa-solid fa-arrows-to-dot"></i> Centrar Vista 3D
+        </button>
+      </div>
+    </aside>
+
+    <!-- Panel Lateral Derecho Flotante: Ficha Científica de la Etapa -->
+    <aside class="right-info-hud" id="stage-info-drawer">
+      <button class="hud-toggle-tab" id="btn-toggle-right-hud" title="Ocultar / Mostrar Ficha Médica">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+      <div class="hud-panel glass-panel">
+        <div class="drawer-header">
+          <div class="badge-stage-number" id="drawer-stage-badge">Etapa 1</div>
+          <h2 id="drawer-stage-title">Concepción</h2>
+          <span class="stage-weeks-pill" id="drawer-stage-weeks">Semana 1</span>
+        </div>
+
+        <div class="drawer-content">
+          <!-- Comparación de Tamaño Destacada -->
+          <div class="size-comparison-card">
+            <div class="size-icon-wrap" id="size-fruit-icon">
+              🌱
+            </div>
+            <div class="size-text-wrap">
+              <span class="size-label">Tamaño aproximado:</span>
+              <strong class="size-value" id="drawer-size-value">0.1 mm</strong>
+              <span class="size-fruit" id="drawer-size-fruit">(Semilla de amapola)</span>
+            </div>
+          </div>
+
+          <!-- Hitos del Desarrollo Fetal -->
+          <div class="info-block">
+            <h3><i class="fa-solid fa-dna"></i> Hitos del Desarrollo</h3>
+            <ul id="drawer-fetal-milestones" class="feature-list">
+              <!-- Rellenado dinámicamente -->
+            </ul>
+          </div>
+
+          <!-- Cambios en la Madre -->
+          <div class="info-block maternal-block">
+            <h3><i class="fa-solid fa-person-pregnant"></i> Cambios en la Madre</h3>
+            <ul id="drawer-maternal-changes" class="feature-list">
+              <!-- Rellenado dinámicamente -->
+            </ul>
+          </div>
+
+          <!-- Botón para Jugar el Minijuego de esta etapa -->
+          <button class="play-minigame-cta" id="btn-launch-stage-minigame">
+            <i class="fa-solid fa-gamepad"></i>
+            <div class="cta-text">
+              <strong>Jugar Reto de la Etapa</strong>
+              <span id="drawer-minigame-name">La Carrera Fecundativa</span>
+            </div>
+            <i class="fa-solid fa-chevron-right cta-arrow"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Barra Inferior de Tiempo: Las 7 Etapas de la Infografía -->
+    <footer class="bottom-timeline-bar">
+      <!-- Indicador de Navegación de Etapas -->
+      <div class="timeline-controls">
+        <button class="timeline-nav-btn" id="btn-prev-stage" title="Etapa Anterior">
+          <i class="fa-solid fa-backward-step"></i>
+        </button>
+        <button class="timeline-nav-btn play-btn" id="btn-play-tour" title="Reproducir Viaje Automático">
+          <i class="fa-solid fa-play"></i>
+        </button>
+        <button class="timeline-nav-btn" id="btn-next-stage" title="Siguiente Etapa">
+          <i class="fa-solid fa-forward-step"></i>
+        </button>
+      </div>
+
+      <!-- Los 7 Nodos de la Infografía -->
+      <div class="timeline-track" id="timeline-track">
+        <div class="timeline-stage-node active" data-stage="0">
+          <div class="node-bullet"><i class="fa-solid fa-circle-dot"></i></div>
+          <div class="node-info">
+            <span class="node-title">Concepción</span>
+            <span class="node-weeks">Semana 1</span>
+          </div>
+          <span class="node-fruit-badge">0.1 mm</span>
+        </div>
+
+        <div class="timeline-stage-node" data-stage="1">
+          <div class="node-bullet"><i class="fa-solid fa-heart"></i></div>
+          <div class="node-info">
+            <span class="node-title">Embrión Temprano</span>
+            <span class="node-weeks">Sem. 2 - 4</span>
+          </div>
+          <span class="node-fruit-badge">0.5 cm</span>
+        </div>
+
+        <div class="timeline-stage-node" data-stage="2">
+          <div class="node-bullet"><i class="fa-solid fa-hand"></i></div>
+          <div class="node-info">
+            <span class="node-title">Embrión</span>
+            <span class="node-weeks">Sem. 5 - 8</span>
+          </div>
+          <span class="node-fruit-badge">2.5 cm</span>
+        </div>
+
+        <div class="timeline-stage-node" data-stage="3">
+          <div class="node-bullet"><i class="fa-solid fa-child"></i></div>
+          <div class="node-info">
+            <span class="node-title">Feto Temprano</span>
+            <span class="node-weeks">Sem. 9 - 12</span>
+          </div>
+          <span class="node-fruit-badge">6 cm</span>
+        </div>
+
+        <div class="timeline-stage-node" data-stage="4">
+          <div class="node-bullet"><i class="fa-solid fa-baby-carriage"></i></div>
+          <div class="node-info">
+            <span class="node-title">Feto en Desarrollo</span>
+            <span class="node-weeks">Sem. 13 - 20</span>
+          </div>
+          <span class="node-fruit-badge">16 cm</span>
+        </div>
+
+        <div class="timeline-stage-node" data-stage="5">
+          <div class="node-bullet"><i class="fa-solid fa-lungs"></i></div>
+          <div class="node-info">
+            <span class="node-title">Feto Avanzado</span>
+            <span class="node-weeks">Sem. 21 - 36</span>
+          </div>
+          <span class="node-fruit-badge">28 cm</span>
+        </div>
+
+        <div class="timeline-stage-node" data-stage="6">
+          <div class="node-bullet"><i class="fa-solid fa-cake-candles"></i></div>
+          <div class="node-info">
+            <span class="node-title">Término</span>
+            <span class="node-weeks">Sem. 37 - 40</span>
+          </div>
+          <span class="node-fruit-badge">48-52 cm</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- ================= MODALES Y VISTAS ESPECIALES ================= -->
+
+    <!-- Modal de Minijuegos -->
+    <div class="modal-backdrop" id="minigame-modal">
+      <div class="modal-dialog modal-xl glass-panel">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge" id="minigame-stage-badge">Minijuego - Etapa 1</span>
+            <h2 id="minigame-title">La Carrera de la Concepción</h2>
+          </div>
+          <button class="close-modal-btn" id="btn-close-minigame">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="minigame-instructions" id="minigame-instructions">
+            <!-- Instrucciones dinámicas -->
+          </div>
+          <div class="minigame-canvas-container" id="minigame-canvas-wrap">
+            <canvas id="minigame-canvas" width="800" height="450"></canvas>
+            <div class="minigame-hud" id="minigame-hud">
+              <!-- Puntuación / Vidas / Tiempo -->
+            </div>
+            <div class="minigame-screen-overlay" id="minigame-overlay">
+              <div class="overlay-content">
+                <h3 id="overlay-title">¿Listo para comenzar?</h3>
+                <p id="overlay-desc">Usa el mouse o las flechas para guiar la célula.</p>
+                <button class="primary-btn" id="btn-start-minigame">
+                  <i class="fa-solid fa-play"></i> ¡Iniciar Reto!
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controles Táctiles y de Botones Rápidos en Pantalla -->
+          <div class="minigame-touch-controls" style="display: flex; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+            <button class="icon-btn" id="btn-touch-up" style="padding: 8px 16px; width: auto; font-size: 13px; background: rgba(255,255,255,0.08);"><i class="fa-solid fa-arrow-up"></i> Arriba (W)</button>
+            <button class="icon-btn" id="btn-touch-down" style="padding: 8px 16px; width: auto; font-size: 13px; background: rgba(255,255,255,0.08);"><i class="fa-solid fa-arrow-down"></i> Abajo (S)</button>
+            <button class="icon-btn" id="btn-touch-left" style="padding: 8px 16px; width: auto; font-size: 13px; background: rgba(255,255,255,0.08);"><i class="fa-solid fa-arrow-left"></i> Izquierda (A)</button>
+            <button class="icon-btn" id="btn-touch-right" style="padding: 8px 16px; width: auto; font-size: 13px; background: rgba(255,255,255,0.08);"><i class="fa-solid fa-arrow-right"></i> Derecha (D)</button>
+            <button class="primary-btn" id="btn-touch-action" style="padding: 8px 20px; font-size: 13px; background: linear-gradient(135deg, #f59e0b, #ef4444);"><i class="fa-solid fa-bolt"></i> Impulso / Acción (Espacio)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal del Simulador de Cuidados Maternos -->
+    <div class="modal-backdrop" id="care-simulator-modal">
+      <div class="modal-dialog modal-lg glass-panel">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">Simulador de Vida y Salud</span>
+            <h2>Cuidados Esenciales Durante el Embarazo</h2>
+          </div>
+          <button class="close-modal-btn" id="btn-close-care">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="care-intro-banner">
+            <p><strong>"Cada etapa es única y maravillosa. Cuidemos la vida desde su inicio. ¡TU DECISIÓN HOY CONSTRUYE TU MAÑANA!"</strong></p>
+            <p class="subtitle">Equilibra los 7 pilares fundamentales para asegurar un desarrollo óptimo del bebé y el bienestar de la madre.</p>
+          </div>
+
+          <!-- Métricas de Salud Materno-Fetal -->
+          <div class="vitality-gauges">
+            <div class="gauge-card">
+              <div class="gauge-title"><i class="fa-solid fa-heart"></i> Bienestar Fetal</div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="gauge-fetal" style="width: 75%;"></div>
+              </div>
+              <span class="gauge-value" id="val-fetal">75%</span>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-title"><i class="fa-solid fa-person-breastfeeding"></i> Salud Materna</div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill maternal-fill" id="gauge-maternal" style="width: 80%;"></div>
+              </div>
+              <span class="gauge-value" id="val-maternal">80%</span>
+            </div>
+          </div>
+
+          <!-- Los 7 Pilares Interactivos -->
+          <div class="care-grid" id="care-pillars-grid">
+            <!-- Rellenado dinámicamente con las 7 tarjetas de la infografía -->
+          </div>
+
+          <!-- Log de Decisiones y Consejos Médicos -->
+          <div class="care-feedback-box" id="care-feedback-box">
+            <i class="fa-solid fa-circle-info"></i>
+            <span id="care-feedback-text">Haz clic en cada pilar para realizar acciones saludables y observar cómo se fortalece el desarrollo prenatal.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Trivia Pedagógica -->
+    <div class="modal-backdrop" id="trivia-modal">
+      <div class="modal-dialog modal-md glass-panel">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">Reto de Conocimiento</span>
+            <h2>Trivia: Embriología y Desarrollo</h2>
+          </div>
+          <button class="close-modal-btn" id="btn-close-trivia">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="trivia-progress-bar">
+            <div class="trivia-progress-fill" id="trivia-progress-fill" style="width: 0%;"></div>
+          </div>
+          <div class="trivia-meta">
+            <span id="trivia-counter">Pregunta 1 de 10</span>
+            <span id="trivia-score">Puntaje: 0 pts</span>
+          </div>
+          
+          <div class="trivia-question-card">
+            <h3 id="trivia-question-text">Cargando pregunta...</h3>
+            <div class="trivia-options-grid" id="trivia-options-wrap">
+              <!-- Opciones dinámicas -->
+            </div>
+            <div class="trivia-explanation hidden" id="trivia-explanation">
+              <i class="fa-solid fa-lightbulb"></i>
+              <p id="trivia-explanation-text"></p>
+            </div>
+          </div>
+
+          <div class="trivia-footer">
+            <button class="primary-btn hidden" id="btn-next-question">
+              Siguiente Pregunta <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal del Gran Libro de la Vida (Enciclopedia & Logros) -->
+    <div class="modal-backdrop" id="encyclopedia-modal">
+      <div class="modal-dialog modal-lg glass-panel">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">El Gran Libro de la Vida</span>
+            <h2>Enciclopedia Prenatal & Medallas</h2>
+          </div>
+          <button class="close-modal-btn" id="btn-close-encyclopedia">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="encyclopedia-tabs">
+            <button class="sub-tab active" data-subtab="medals"><i class="fa-solid fa-trophy"></i> Logros y Medallas</button>
+            <button class="sub-tab" data-subtab="glossary"><i class="fa-solid fa-book"></i> Glosario Científico</button>
+            <button class="sub-tab" data-subtab="comparison"><i class="fa-solid fa-apple-whole"></i> Tabla Comparativa de Tamaños</button>
+          </div>
+          
+          <div class="encyclopedia-tab-content" id="encyclopedia-content">
+            <!-- Rellenado dinámicamente -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Ayuda y Tutorial -->
+    <div class="modal-backdrop" id="help-modal">
+      <div class="modal-dialog modal-md glass-panel">
+        <div class="modal-header">
+          <h2><i class="fa-solid fa-compass"></i> Guía de Controles e Instrucciones</h2>
+          <button class="close-modal-btn" id="btn-close-help">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="help-grid">
+            <div class="help-item">
+              <i class="fa-solid fa-computer-mouse"></i>
+              <strong>Rotación 3D</strong>
+              <span>Clic izquierdo y arrastra para girar 360°.</span>
+            </div>
+            <div class="help-item">
+              <i class="fa-solid fa-magnifying-glass-plus"></i>
+              <strong>Zoom y Enfoque</strong>
+              <span>Rueda del mouse o pellizco en pantalla táctil para acercar/alejar.</span>
+            </div>
+            <div class="help-item">
+              <i class="fa-solid fa-hand-pointer"></i>
+              <strong>Desplazamiento</strong>
+              <span>Clic derecho y arrastra para mover la cámara (paneo).</span>
+            </div>
+            <div class="help-item">
+              <i class="fa-solid fa-heart-pulse"></i>
+              <strong>Audio de Latidos</strong>
+              <span>Activa el botón de volumen para escuchar los latidos cardíacos sintetizados en tiempo real acordes a la edad gestacional.</span>
+            </div>
+            <div class="help-item">
+              <i class="fa-solid fa-lemon"></i>
+              <strong>Comparador de Frutas</strong>
+              <span>Activa el interruptor lateral para visualizar en 3D la escala real del bebé frente a la fruta correspondiente.</span>
+            </div>
+            <div class="help-item">
+              <i class="fa-solid fa-gamepad"></i>
+              <strong>Minijuegos por Etapa</strong>
+              <span>Cada etapa cuenta con un reto interactivo para aprender jugando.</span>
+            </div>
+          </div>
+          <div class="help-footer-action">
+            <button class="primary-btn" id="btn-got-it">¡Entendido! Comenzar a Explorar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Gestograma y Calculadora Obstétrica -->
+    <div class="modal-backdrop" id="gestogram-modal">
+      <div class="modal-card glass-panel" style="max-width: 540px;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="fa-solid fa-calculator" style="color: var(--primary-light);"></i>
+            <h3>Calculadora Obstétrica & Gestograma</h3>
+          </div>
+          <button class="close-modal-btn" id="btn-close-gestogram">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">
+            Ingresa la <strong>Fecha de Última Menstruación (FUM)</strong> para calcular las semanas exactas de gestación, percentil de crecimiento fetal y fecha probable de parto por la Regla de Naegele.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="font-size: 13px; font-weight: 600; color: #fff;">Fecha de Última Menstruación (FUM):</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="date" id="gestogram-fur" style="flex: 1; padding: 10px 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; font-family: inherit; font-size: 14px;">
+              <button class="primary-btn" id="btn-calc-gestogram">
+                <i class="fa-solid fa-calculator"></i> Calcular
+              </button>
+            </div>
+          </div>
+
+          <div id="gestogram-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Simulador Clínico de Parto Humano Continuo & Corte de Cordón -->
+    <div class="modal-backdrop" id="birth-simulator-modal">
+      <div class="modal-dialog glass-panel modal-lg" style="max-width: 900px; width: 95vw;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">Obstetricia & Neonatología Clínica</span>
+            <h2><i class="fa-solid fa-hands-holding-child" style="color: #38bdf8; margin-right: 8px;"></i> Sala de Parto: Simulación Obstétrica Continua</h2>
+          </div>
+          <button class="close-modal-btn" id="btn-close-birth-sim">&times;</button>
+        </div>
+
+        <!-- Barra Continua de Progreso Obstétrico Paso a Paso -->
+        <div class="birth-progress-tracker" style="margin: 12px 20px 0 20px; overflow-x: auto;">
+          <div class="birth-progress-node active" id="birth-step-indicator-1">
+            <i class="fa-solid fa-chart-line"></i> <span>1. Dilatación & CTG</span>
+          </div>
+          <div class="birth-progress-node" id="birth-step-indicator-2">
+            <i class="fa-solid fa-hand-holding-medical"></i> <span>2. Coronamiento & Ritgen</span>
+          </div>
+          <div class="birth-progress-node" id="birth-step-indicator-3">
+            <i class="fa-solid fa-person-breastfeeding"></i> <span>3. Desprendimiento Hombros</span>
+          </div>
+          <div class="birth-progress-node" id="birth-step-indicator-4">
+            <i class="fa-solid fa-scissors"></i> <span>4. ✂️ Pinzamiento & Corte</span>
+          </div>
+          <div class="birth-progress-node" id="birth-step-indicator-5">
+            <i class="fa-solid fa-child-reaching"></i> <span>5. Piel a Piel & Apgar</span>
+          </div>
+          <div class="birth-progress-node" id="birth-step-indicator-6">
+            <i class="fa-solid fa-shield-heart"></i> <span>6. Alumbramiento Placenta</span>
+          </div>
+        </div>
+
+        <!-- Barra de Control Temporal Obstétrico Segundo a Segundo -->
+        <div style="background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 10px; margin: 8px 20px 0 20px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="primary-btn" id="btn-sim-autoplay" style="padding: 7px 16px; font-size: 13px;">
+              <i class="fa-solid fa-play"></i> Iniciar Simulación Segundo a Segundo
+            </button>
+            <button class="icon-btn" id="btn-sim-speed" title="Velocidad de Reproducción (1x, 2x, 0.5x)" style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; background: rgba(255,255,255,0.1);">
+              1.0x
+            </button>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: #cbd5e1;">
+            <span id="birth-current-doctor-step" style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; padding: 4px 12px; border-radius: 6px; font-size: 12.5px; color: #e0f2fe;">Dr. Torres: Ingreso a Sala de Partos</span>
+          </div>
+        </div>
+
+        <div class="modal-body" style="padding: 16px 20px 24px 20px; overflow-y: auto; max-height: calc(92vh - 140px);">
+          <!-- Layout en 2 Columnas Espaciosas: Izquierda Teatro Visual | Derecha Ficha Clínica -->
+          <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start;">
+            
+            <!-- COLUMNA IZQUIERDA: VISUALIZACIÓN FOTORREALISTA Y LÍNEA DE TIEMPO -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- Contenedor del Lienzo / Imagen Médica -->
+              <div style="position: relative; border-radius: 12px; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 8px 24px rgba(0,0,0,0.5); background: #060914;">
+                <canvas id="birth-sim-canvas" width="960" height="540" style="width: 100%; height: auto; display: block;"></canvas>
+              </div>
+
+              <!-- Selector de Hitos cada 10 Segundos -->
+              <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 14px;">
+                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                  <span><i class="fa-solid fa-film"></i> Hitos Clínicos Cada 10 Segundos:</span>
+                  <span style="color: #38bdf8; font-size: 11px;">Clic para saltar</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px;">
+                  <button class="tick-btn" id="btn-tick-0" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #fff; border-radius: 4px; cursor: pointer;">0s</button>
+                  <button class="tick-btn" id="btn-tick-10" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">10s</button>
+                  <button class="tick-btn" id="btn-tick-20" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">20s</button>
+                  <button class="tick-btn" id="btn-tick-30" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">30s</button>
+                  <button class="tick-btn" id="btn-tick-40" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">40s</button>
+                  <button class="tick-btn" id="btn-tick-50" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">50s</button>
+                  <button class="tick-btn" id="btn-tick-60" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">60s</button>
+                  <button class="tick-btn" id="btn-tick-70" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">70s</button>
+                  <button class="tick-btn" id="btn-tick-80" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">80s</button>
+                  <button class="tick-btn" id="btn-tick-90" style="padding: 5px 2px; font-size: 11px; font-family: monospace; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; cursor: pointer;">90s</button>
+                </div>
+              </div>
+
+              <!-- Barra Deslizadora Continua Segundo a Segundo -->
+              <div style="background: rgba(10, 15, 30, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <span style="font-size: 12px; color: #94a3b8;"><i class="fa-solid fa-sliders"></i> Deslizador Preciso Segundo a Segundo:</span>
+                  <span style="font-family: monospace; font-weight: 700; color: #38bdf8;" id="clock-display">00:00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 11px; color: #64748b; font-family: monospace;">00:00</span>
+                  <input type="range" id="birth-timeline-scrubber" min="0" max="90" value="0" style="flex: 1; cursor: pointer; accent-color: #38bdf8;">
+                  <span style="font-size: 11px; color: #64748b; font-family: monospace;">01:30</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: FICHA CLÍNICA ORDENADA Y ACCIONES -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              
+              <!-- Tarjeta de Información Clínica del Hito Actual -->
+              <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
+                <h3 id="birth-info-title" style="color: #f8fafc; font-size: 15px; font-family: var(--font-heading); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                  <span style="color:#38bdf8;">[00:00]</span> Ingreso & Dilatación Inicial (4 a 6 cm)
+                </h3>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <!-- Acción del Doctor -->
+                  <div style="background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; padding: 10px 12px; border-radius: 0 8px 8px 0;">
+                    <div style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 2px;">
+                      <i class="fa-solid fa-user-doctor"></i> Acción Médica del Doctor:
+                    </div>
+                    <div id="birth-info-doctor" style="font-size: 13px; color: #e2e8f0; line-height: 1.45;">
+                      El obstetra palpa el fondo uterino materno para evaluar la contractilidad miometrial y calibra los transductores del monitor CTG.
+                    </div>
+                  </div>
+
+                  <!-- Estado Materno -->
+                  <div style="background: rgba(236, 72, 153, 0.08); border-left: 3px solid #ec4899; padding: 10px 12px; border-radius: 0 8px 8px 0;">
+                    <div style="font-size: 11px; font-weight: 700; color: #f472b6; text-transform: uppercase; margin-bottom: 2px;">
+                      <i class="fa-solid fa-person-pregnant"></i> Estado Fisiológico Materno:
+                    </div>
+                    <div id="birth-info-maternal" style="font-size: 13px; color: #e2e8f0; line-height: 1.45;">
+                      Contracciones cada 4 minutos con duración de 45 segundos. FCF fetal reactiva en 142 BPM.
+                    </div>
+                  </div>
+
+                  <!-- Plano y Estación -->
+                  <div style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; padding: 8px 12px; border-radius: 0 8px 8px 0;">
+                    <div style="font-size: 11px; font-weight: 700; color: #34d399; text-transform: uppercase; margin-bottom: 2px;">
+                      <i class="fa-solid fa-ruler-vertical"></i> Plano de Descenso:
+                    </div>
+                    <div id="birth-info-station" style="font-size: 12.5px; color: #cbd5e1;">
+                      -2 De Lee (Cabeza sobre plano de las espinas ciáticas)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Paneles de Acción Clínica Guiada -->
+              <div style="background: rgba(10, 15, 30, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px;">
+                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">
+                  <i class="fa-solid fa-hand-holding-medical"></i> Maniobras Obstétricas Activas:
+                </div>
+
+                <!-- Panel 1 -->
+                <div id="birth-action-panel-1" style="display: flex; flex-direction: column; gap: 8px;">
+                  <button class="primary-btn" id="btn-sim-breathe" style="width: 100%; justify-content: center; padding: 10px;">
+                    <i class="fa-solid fa-lungs"></i> Coordinar Respiración & Pujo
+                  </button>
+                </div>
+
+                <!-- Panel 2 -->
+                <div id="birth-action-panel-2" style="display: none; flex-direction: column; gap: 8px;">
+                  <button class="primary-btn" id="btn-sim-ritgen" style="width: 100%; justify-content: center; padding: 10px; background: linear-gradient(135deg, #9333ea, #6366f1);">
+                    <i class="fa-solid fa-hands-holding"></i> Aplicar Maniobra de Ritgen
+                  </button>
+                </div>
+
+                <!-- Panel 3 -->
+                <div id="birth-action-panel-3" style="display: none; flex-direction: column; gap: 8px;">
+                  <button class="primary-btn" id="btn-sim-shoulders" style="width: 100%; justify-content: center; padding: 10px; background: #db2777;">
+                    <i class="fa-solid fa-baby"></i> Desprender Hombro Anterior & Posterior
+                  </button>
+                </div>
+
+                <!-- Panel 4 -->
+                <div id="birth-action-panel-4" style="display: none; flex-direction: column; gap: 8px;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button class="primary-btn" id="btn-sim-clamp1" style="font-size: 11px; padding: 8px; background: #0284c7;">
+                      1. Pinza 1 (2 cm)
+                    </button>
+                    <button class="primary-btn" id="btn-sim-clamp2" style="font-size: 11px; padding: 8px; background: #2563eb;" disabled>
+                      2. Pinza 2 (5 cm)
+                    </button>
+                  </div>
+                  <button class="primary-btn" id="btn-sim-cut-cord" style="width: 100%; justify-content: center; padding: 10px; background: #059669; font-size: 12.5px;" disabled>
+                    <i class="fa-solid fa-scissors"></i> 3. ✂️ Cortar Cordón con Tijera
+                  </button>
+                </div>
+
+                <!-- Panel 5 -->
+                <div id="birth-action-panel-5" style="display: none; flex-direction: column; gap: 8px;">
+                  <button class="primary-btn" id="btn-sim-apgar" style="width: 100%; justify-content: center; padding: 10px; background: #10b981;">
+                    <i class="fa-solid fa-check-double"></i> Evaluar Test de Apgar (10/10)
+                  </button>
+                  <div id="apgar-eval-result"></div>
+                </div>
+
+                <!-- Panel 6 -->
+                <div id="birth-action-panel-6" style="display: none; flex-direction: column; gap: 8px;">
+                  <button class="primary-btn" id="btn-deliver-placenta" style="width: 100%; justify-content: center; padding: 10px; background: #dc2626;">
+                    <i class="fa-solid fa-shield-heart"></i> Expulsar Placenta (Brandt-Andrews)
+                  </button>
+                  <div id="placenta-status-msg"></div>
+                </div>
+
+                <div id="birth-completion-banner" style="display: none; margin-top: 10px; text-align: center; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 8px; padding: 12px;">
+                  <strong style="color: #34d399; font-size: 14px;">🎉 ¡Parto Culminado con Éxito Clínico Total!</strong>
+                  <div style="margin-top: 8px;">
+                    <button class="primary-btn" id="btn-restart-birth-sim" style="background: #6366f1; padding: 6px 14px; font-size: 12px;">
+                      <i class="fa-solid fa-rotate-right"></i> Repetir Simulación
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bitácora Quirúrgica en Vivo -->
+              <div style="background: rgba(8, 12, 26, 0.75); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 10px 14px;">
+                <div style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 4px;">
+                  <i class="fa-solid fa-clipboard-list"></i> Bitácora Quirúrgica en Tiempo Real:
+                </div>
+                <div id="birth-action-log" style="max-height: 85px; overflow-y: auto; font-family: monospace; font-size: 11.5px; color: #cbd5e1; display: flex; flex-direction: column; gap: 4px;">
+                  <div><strong style="color: #38bdf8;">Dr. Torres:</strong> [00:00] Ingreso a Sala de Partos. Feto a término cefálico en útero.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Notificaciones flotantes tipo Toast -->
+    <div id="toast-container"></div>
+
+  </div>
+
+  <!-- Script Principal Modular -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
