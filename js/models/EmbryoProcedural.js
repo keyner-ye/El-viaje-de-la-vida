@@ -48,9 +48,7 @@ export class EmbryoProcedural {
       bone: new THREE.MeshStandardMaterial({
         color: 0xfafafa,
         roughness: 0.2,
-        metalness: 0.1,
-        transparent: true,
-        opacity: 0.95
+        metalness: 0.1
       }),
       cartilage: new THREE.MeshStandardMaterial({
         color: 0xbae6fd,
@@ -63,8 +61,115 @@ export class EmbryoProcedural {
         color: 0xe9d5ff,
         roughness: 0.4,
         metalness: 0.05
+      }),
+
+      // MODO ANATOMÍA (Pulmones & Órganos)
+      translucentSkin: new THREE.MeshStandardMaterial({
+        color: 0xffedd5,
+        roughness: 0.28,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false
+      }),
+      lungAnatomy: new THREE.MeshStandardMaterial({
+        color: 0xfb7185,
+        emissive: 0xf43f5e,
+        emissiveIntensity: 0.95,
+        roughness: 0.2
+      }),
+      heartAnatomy: new THREE.MeshStandardMaterial({
+        color: 0xef4444,
+        emissive: 0xdc2626,
+        emissiveIntensity: 1.0,
+        roughness: 0.2
+      }),
+      organAnatomy: new THREE.MeshStandardMaterial({
+        color: 0xa855f7,
+        emissive: 0x7e22ce,
+        emissiveIntensity: 0.55,
+        roughness: 0.25
+      }),
+
+      // MODO RAYOS X (Cian eléctrico y bioluminiscencia)
+      xraySkin: new THREE.MeshStandardMaterial({
+        color: 0x06b6d4,
+        transparent: true,
+        opacity: 0.04,
+        roughness: 0.1,
+        depthWrite: false
+      }),
+      xrayBone: new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 1.25,
+        roughness: 0.1
+      }),
+      xrayLung: new THREE.MeshStandardMaterial({
+        color: 0x3b82f6,
+        emissive: 0x1d4ed8,
+        emissiveIntensity: 0.85,
+        roughness: 0.3
+      }),
+      xrayHeart: new THREE.MeshStandardMaterial({
+        color: 0xf43f5e,
+        emissive: 0xe11d48,
+        emissiveIntensity: 0.95,
+        roughness: 0.2
+      }),
+      xrayOrgan: new THREE.MeshStandardMaterial({
+        color: 0x818cf8,
+        emissive: 0x4f46e5,
+        emissiveIntensity: 0.6,
+        roughness: 0.3
+      }),
+
+      // MODO ECOGRAFÍA 3D DOPPLER
+      ultrasoundSkin: new THREE.MeshStandardMaterial({
+        color: 0xd1d5db,
+        roughness: 0.9,
+        metalness: 0.05
+      }),
+      ultrasoundBone: new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.65,
+        roughness: 0.15
       })
     };
+  }
+
+  // ================= REGISTRO DE CAPAS ANATÓMICAS =================
+  registerSkin(...meshes) {
+    meshes.forEach((m) => {
+      if (!m) return;
+      m.userData.isSkin = true;
+      if (!m.userData.originalMat) {
+        m.userData.originalMat = m.material.clone ? m.material.clone() : m.material;
+      }
+      if (!this.skinMeshes.includes(m)) this.skinMeshes.push(m);
+    });
+  }
+
+  registerBone(...meshes) {
+    meshes.forEach((m) => {
+      if (!m) return;
+      m.userData.isBone = true;
+      if (!m.userData.originalMat) {
+        m.userData.originalMat = m.material.clone ? m.material.clone() : m.material;
+      }
+      if (!this.skeletonMeshes.includes(m)) this.skeletonMeshes.push(m);
+    });
+  }
+
+  registerOrgan(...meshes) {
+    meshes.forEach((m) => {
+      if (!m) return;
+      m.userData.isOrgan = true;
+      if (!m.userData.originalMat) {
+        m.userData.originalMat = m.material.clone ? m.material.clone() : m.material;
+      }
+      if (!this.organMeshes.includes(m)) this.organMeshes.push(m);
+    });
   }
 
   // ================= CONSTRUCCIÓN POR ETAPA =================
@@ -122,10 +227,28 @@ export class EmbryoProcedural {
       if (this.renderMode === 'anatomy') sacMat.opacity = 0.1;
       const sacMesh = new THREE.Mesh(sacGeo, sacMat);
       sacMesh.scale.set(1.15, 1.35, 1.15);
+      sacMesh.userData = { isSac: true, originalMat: sacMat };
       stageGroup.add(sacMesh);
     }
 
     this.rootGroup.add(stageGroup);
+
+    // Escanear y registrar todos los meshes de la escena procedural de manera exhaustiva
+    this.activeMeshes = [];
+    this.rootGroup.traverse((obj) => {
+      if (obj.isMesh) {
+        this.activeMeshes.push(obj);
+        if (!obj.userData.originalMat) {
+          obj.userData.originalMat = obj.material.clone ? obj.material.clone() : obj.material;
+        }
+        // Si no ha sido clasificado específicamente, es parte del exterior/piel
+        if (!obj.userData.isBone && !obj.userData.isOrgan && !obj.userData.isLung && !obj.userData.isHeart && !obj.userData.isSac && !obj.userData.isCord) {
+          obj.userData.isSkin = true;
+          if (!this.skinMeshes.includes(obj)) this.skinMeshes.push(obj);
+        }
+      }
+    });
+
     this.applyRenderMode(this.renderMode);
     return this.rootGroup;
   }
@@ -1116,34 +1239,33 @@ export class EmbryoProcedural {
   setDissectionLayer(layer) {
     this.dissectionLayer = Math.max(0, Math.min(1, layer));
 
-    this.skinMeshes.forEach((mesh) => {
-      if (!mesh.material) return;
-      const skinOpacity = Math.max(0.05, 1.0 - this.dissectionLayer * 0.95);
-      mesh.material.transparent = true;
-      mesh.material.opacity = skinOpacity;
-      mesh.material.depthWrite = skinOpacity > 0.6;
-    });
+    if (this.dissectionLayer < 0.04) {
+      this.applyRenderMode('bio');
+      return;
+    }
 
-    this.skeletonMeshes.forEach((mesh) => {
+    this.activeMeshes.forEach((mesh) => {
       if (!mesh.material) return;
-      mesh.visible = true;
-      if (this.dissectionLayer > 0.3) {
-        mesh.material.emissive = new THREE.Color(0x06b6d4);
-        mesh.material.emissiveIntensity = (this.dissectionLayer - 0.3) * 0.85;
-      } else {
-        mesh.material.emissive = new THREE.Color(0x000000);
-        mesh.material.emissiveIntensity = 0;
-      }
-    });
 
-    this.organMeshes.forEach((mesh) => {
-      if (!mesh.material) return;
-      mesh.visible = true;
-      if (this.dissectionLayer > 0.15 && this.dissectionLayer < 0.85) {
-        mesh.material.opacity = 1.0;
-      } else if (this.dissectionLayer >= 0.85) {
-        // En disección ósea extrema, atenuar órganos para destacar el esqueleto
-        mesh.material.opacity = Math.max(0.2, 1.0 - (this.dissectionLayer - 0.85) * 5);
+      if (mesh.userData.isSac) {
+        mesh.visible = false;
+      } else if (mesh.userData.isSkin) {
+        mesh.visible = true;
+        mesh.material = this.materials.translucentSkin;
+        const skinOpacity = Math.max(0.04, 1.0 - this.dissectionLayer * 0.96);
+        mesh.material.opacity = skinOpacity;
+      } else if (mesh.userData.isBone) {
+        mesh.visible = true;
+        mesh.material = this.materials.bone;
+      } else if (mesh.userData.isLung) {
+        mesh.visible = this.dissectionLayer < 0.85;
+        mesh.material = this.materials.lungAnatomy;
+      } else if (mesh.userData.isHeart) {
+        mesh.visible = this.dissectionLayer < 0.85;
+        mesh.material = this.materials.heartAnatomy;
+      } else if (mesh.userData.isOrgan) {
+        mesh.visible = this.dissectionLayer < 0.85;
+        mesh.material = this.materials.organAnatomy;
       }
     });
   }
@@ -1156,86 +1278,89 @@ export class EmbryoProcedural {
       if (!mesh.material) return;
 
       if (mode === 'bio') {
-        // Modo Biológico Realista
-        mesh.visible = true;
-        if (mesh.userData.originalMat) {
-          mesh.material = mesh.userData.originalMat;
+        // ================= MODO BIOLÓGICO REALISTA =================
+        if (mesh.userData.isSac) {
+          mesh.visible = true;
+          mesh.material = this.materials.amnioticSac;
+        } else if (mesh.userData.isSkin) {
+          mesh.visible = true;
+          if (mesh.userData.originalMat) {
+            mesh.material = mesh.userData.originalMat;
+          }
+          // Piel 100% opaca y biológica
+          mesh.material.transparent = false;
+          mesh.material.opacity = 1.0;
+          mesh.material.depthWrite = true;
+        } else if (mesh.userData.isBone || mesh.userData.isOrgan || mesh.userData.isLung || mesh.userData.isHeart) {
+          // Órganos internos y huesos se ocultan dentro del cuerpo en vista exterior
+          mesh.visible = false;
+        } else {
+          mesh.visible = true;
+          if (mesh.userData.originalMat) {
+            mesh.material = mesh.userData.originalMat;
+          }
         }
       } else if (mode === 'anatomy') {
-        // MODO ANATOMÍA: Piel translúcida revelando esqueleto, pulmones, corazón e hígado
-        mesh.visible = true;
-        if (mesh.userData.isSkin) {
-          mesh.material = new THREE.MeshPhysicalMaterial({
-            color: 0xffedd5,
-            roughness: 0.12,
-            transparent: true,
-            opacity: 0.22,
-            transmission: 0.85,
-            ior: 1.34,
-            depthWrite: false
-          });
-        } else if (mesh.userData.isBone) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0x93c5fd,
-            emissiveIntensity: 0.45,
-            roughness: 0.2
-          });
+        // ================= MODO ANATOMÍA (PULMONES Y ÓRGANOS INTERNOS) =================
+        if (mesh.userData.isSac) {
+          // Ocultar saco exterior para que no bloquee ni opaque la vista de los órganos
+          mesh.visible = false;
+        } else if (mesh.userData.isSkin) {
+          mesh.visible = true;
+          mesh.material = this.materials.translucentSkin;
         } else if (mesh.userData.isLung) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0xfb7185,
-            emissive: 0xf43f5e,
-            emissiveIntensity: 0.8,
-            roughness: 0.2
-          });
+          mesh.visible = true;
+          mesh.material = this.materials.lungAnatomy;
         } else if (mesh.userData.isHeart) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0xef4444,
-            emissive: 0xdc2626,
-            emissiveIntensity: 1.0,
-            roughness: 0.2
-          });
+          mesh.visible = true;
+          mesh.material = this.materials.heartAnatomy;
+        } else if (mesh.userData.isBone) {
+          mesh.visible = true;
+          mesh.material = this.materials.bone;
+        } else if (mesh.userData.isOrgan) {
+          mesh.visible = true;
+          mesh.material = this.materials.organAnatomy;
+        } else {
+          mesh.visible = true;
         }
       } else if (mode === 'xray') {
-        // Modo Rayos X: Esqueleto en cian eléctrico y órganos bioluminiscentes
-        mesh.visible = true;
-        if (mesh.userData.isSkin) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0x06b6d4,
-            transparent: true,
-            opacity: 0.05,
-            roughness: 0.1
-          });
+        // ================= MODO RAYOS X =================
+        if (mesh.userData.isSac) {
+          mesh.visible = false;
+        } else if (mesh.userData.isSkin) {
+          mesh.visible = true;
+          mesh.material = this.materials.xraySkin;
         } else if (mesh.userData.isBone) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0x22d3ee,
-            emissive: 0x06b6d4,
-            emissiveIntensity: 0.98,
-            roughness: 0.1
-          });
+          mesh.visible = true;
+          mesh.material = this.materials.xrayBone;
         } else if (mesh.userData.isLung) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0x3b82f6,
-            emissive: 0x1d4ed8,
-            emissiveIntensity: 0.65,
-            roughness: 0.3
-          });
+          mesh.visible = true;
+          mesh.material = this.materials.xrayLung;
         } else if (mesh.userData.isHeart) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0xf43f5e,
-            emissive: 0xe11d48,
-            emissiveIntensity: 0.9,
-            roughness: 0.2
-          });
+          mesh.visible = true;
+          mesh.material = this.materials.xrayHeart;
+        } else if (mesh.userData.isOrgan) {
+          mesh.visible = true;
+          mesh.material = this.materials.xrayOrgan;
+        } else {
+          mesh.visible = true;
         }
       } else if (mode === 'ultrasound') {
-        // Modo Ecografía 3D Doppler
-        mesh.visible = true;
-        mesh.material = new THREE.MeshStandardMaterial({
-          color: 0x94a3b8,
-          roughness: 0.85,
-          metalness: 0.15
-        });
+        // ================= MODO ECOGRAFÍA 3D DOPPLER =================
+        if (mesh.userData.isSac) {
+          mesh.visible = false; // El líquido amniótico es anecogénico (transparente)
+        } else if (mesh.userData.isBone) {
+          mesh.visible = true; // Huesos hiperecogénicos con alta reflexión acústica
+          mesh.material = this.materials.ultrasoundBone;
+        } else if (mesh.userData.isSkin || mesh.userData.isCord) {
+          mesh.visible = true;
+          mesh.material = this.materials.ultrasoundSkin;
+        } else if (mesh.userData.isHeart) {
+          mesh.visible = true; // Doppler de flujo cardíaco
+          mesh.material = this.materials.heartAnatomy;
+        } else {
+          mesh.visible = false;
+        }
       }
     });
   }

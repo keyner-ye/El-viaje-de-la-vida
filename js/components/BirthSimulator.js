@@ -29,13 +29,9 @@ export class BirthSimulator {
     this.clinicalSeconds = 0;
     this.lastSecondTick = Date.now();
 
-    // Precarga de imágenes médicas de alta calidad de cada etapa
+    // Almacenamiento diferido de imágenes médicas (se cargan al abrir la sala de parto)
     this.images = {};
-    for (let i = 1; i <= 6; i++) {
-      const img = new Image();
-      img.src = `assets/images/birth_phase${i}.jpg`;
-      this.images[i] = img;
-    }
+    this._imagesLoaded = false;
 
     // Datos detallados organizados cada 10 segundos
     this.milestones = [
@@ -302,7 +298,18 @@ export class BirthSimulator {
     log.scrollTop = log.scrollHeight;
   }
 
+  preloadImages() {
+    if (this._imagesLoaded) return;
+    this._imagesLoaded = true;
+    for (let i = 1; i <= 6; i++) {
+      const img = new Image();
+      img.src = `assets/images/birth_phase${i}.jpg`;
+      this.images[i] = img;
+    }
+  }
+
   open() {
+    this.preloadImages();
     if (this.modal) this.modal.classList.add('open');
     this.isRunning = true;
     soundSystem.init();

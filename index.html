@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>El Viaje de la Vida - Desarrollo Prenatal Humano 3D</title>
   <meta name="description" content="Juego interactivo 3D y plataforma educativa sobre el desarrollo prenatal humano: de la concepción al nacimiento.">
+  <script>
+    // Silenciar avisos informativos de extensiones externas de Chrome (ej. feature_collector.js)
+    (function() {
+      const origWarn = console.warn;
+      console.warn = function(...args) {
+        if (args[0] && typeof args[0] === 'string' && (args[0].includes('feature_collector') || args[0].includes('deprecated parameters'))) return;
+        origWarn.apply(console, args);
+      };
+    })();
+  </script>
   
   <!-- Google Fonts: Outfit & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,6 +26,9 @@
   
   <!-- Estilos del Proyecto -->
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- Favicon para evitar error 404 en consola -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>">
 
   <!-- Import Maps para Three.js y dependencias modernas -->
   <script type="importmap">
@@ -114,6 +127,10 @@
         
         <button class="icon-btn" id="btn-encyclopedia" title="El Gran Libro de la Vida (Enciclopedia)">
           <i class="fa-solid fa-book-medical"></i>
+        </button>
+
+        <button class="icon-btn" id="btn-share-url" title="📱 Abrir en Celular / Código QR y Enlace" style="background: rgba(56, 189, 248, 0.2); border-color: #38bdf8; color: #38bdf8;">
+          <i class="fa-solid fa-mobile-screen-button"></i>
         </button>
 
         <button class="icon-btn" id="btn-help" title="Instrucciones y Controles">
@@ -600,6 +617,46 @@
           </div>
 
           <div id="gestogram-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para Compartir en Celular y Laptop con QR y URL -->
+    <div class="modal-backdrop" id="share-modal">
+      <div class="modal-dialog glass-panel modal-md" style="max-width: 520px; text-align: center;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">Conexión Multi-Dispositivo</span>
+            <h2><i class="fa-solid fa-mobile-screen-button" style="color: #38bdf8; margin-right: 8px;"></i> Abrir en Celular y Laptop</h2>
+          </div>
+          <button class="close-modal-btn" id="btn-close-share">&times;</button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 20px;">
+          <p style="color: #cbd5e1; font-size: 14px; margin: 0; line-height: 1.5;">
+            Escanea este <strong>código QR</strong> con la cámara de tu celular (Android o iPhone) para abrir la aplicación interactiva de inmediato:
+          </p>
+
+          <div style="background: #ffffff; padding: 14px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); display: inline-block;">
+            <img src="assets/images/qr_mobile_url.png" alt="Código QR para celular" style="width: 200px; height: 200px; display: block;">
+          </div>
+
+          <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+            <label style="font-size: 12px; font-weight: 700; color: #38bdf8; text-transform: uppercase;">
+              <i class="fa-solid fa-globe"></i> URL Pública HTTPS (Internet Global):
+            </label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="share-url-public-input" readonly value="https://keyner-ye.github.io/El-viaje-de-la-vida/" style="flex: 1; padding: 10px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid #38bdf8; border-radius: 8px; color: #f8fafc; font-family: monospace; font-size: 13px;">
+              <button class="primary-btn" id="btn-copy-public-url" style="padding: 10px 16px; white-space: nowrap;">
+                <i class="fa-solid fa-copy"></i> Copiar
+              </button>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 10px 14px; width: 100%; box-sizing: border-box; font-size: 12px; color: #94a3b8; text-align: left;">
+            <strong style="color: #facc15;"><i class="fa-solid fa-wifi"></i> Conexión Wi-Fi Local (Misma red):</strong><br>
+            También puedes abrir directamente en cualquier navegador de tu red local:<br>
+            <span style="font-family: monospace; color: #38bdf8; font-size: 13px;">http://10.68.232.72:8080</span>
+          </div>
         </div>
       </div>
     </div>
